@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="家計簿">
+<title>家計簿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- ▼▼▼ Supabase設定 ▼▼▼ -->
+<script>
+  // ★ここにSupabaseの情報を入れてください★
+  window.SUPABASE_URL = 'https://pdklowmecveyfxpvvcan.supabase.co';
+  window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBka2xvd21lY3ZleWZ4cHZ2Y2FuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3OTM1OTksImV4cCI6MjA5NzM2OTU5OX0.tbpbiLPhBuAH0p7C_MdW2oBEereH7SGThLUgjwuefZY';
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<!-- ▲▲▲ ここまで ▲▲▲ -->
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --pink: #FFD6E7; --pink-d: #E8799E; --pink-t: #F9A8C9;
+  --mint: #C8F0E4; --mint-d: #5BBFA0;
+  --sky: #C8E8FF; --sky-d: #5BA3D9;
+  --lemon: #FFF3C4; --lemon-d: #C4962A;
+  --lilac: #E8D8FF; --lilac-d: #8A5CD1; --lilac-t: #B899E8;
+  --peach: #FFE4CC; --peach-d: #D47A3A;
+  --bg: #FFF8FB; --card: #FFFFFF;
+  --text: #3D2C3A; --text2: #8C6F87;
+  --border: rgba(200,160,190,0.25);
+}
+html, body { height: 100%; }
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  max-width: 480px;
+  margin: 0 auto;
+  -webkit-font-smoothing: antialiased;
+}
+.app { padding-bottom: 88px; min-height: 100vh; }
+
+/* Header */
+.header {
+  padding: 16px 18px 14px;
+  background: linear-gradient(135deg, #FFE8F4 0%, #EEE0FF 50%, #D8EEFF 100%);
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 20;
+}
+.header-title { font-size: 20px; font-weight: 700; color: var(--text); }
+.header-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.avatars { display: flex; gap: 8px; }
+.avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  border: 2.5px solid transparent; transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.av-jun { background: var(--sky); color: var(--sky-d); }
+.av-hikari { background: var(--pink); color: var(--pink-d); }
+.avatar.active { border-color: var(--text); transform: scale(1.08); }
+
+/* Tabs */
+.tabs {
+  display: flex; background: white;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 68px; z-index: 10;
+}
+.tab {
+  flex: 1; padding: 11px 4px; font-size: 12px; font-weight: 600;
+  text-align: center; cursor: pointer; color: var(--text2);
+  border-bottom: 3px solid transparent; transition: all 0.2s;
+}
+.tab.active { color: var(--pink-d); border-bottom-color: var(--pink-d); }
+
+/* Screens */
+.screen { display: none; padding: 16px; }
+.screen.active { display: block; }
+
+/* Month nav */
+.month-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.month-label { font-size: 16px; font-weight: 700; color: var(--text); }
+.nav-btn {
+  background: white; border: 1px solid var(--border);
+  border-radius: 20px; padding: 5px 14px; cursor: pointer;
+  font-size: 13px; color: var(--text2);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+/* Summary cards */
+.summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.stat-card {
+  background: white; border-radius: 16px; padding: 14px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 10px rgba(200,150,200,0.08);
+}
+.stat-label { font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
+.stat-value { font-size: 20px; font-weight: 700; color: var(--text); }
+.stat-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; vertical-align: middle; }
+
+/* Settle card */
+.settle-card {
+  background: linear-gradient(135deg, #FFF0F8 0%, #F0E8FF 100%);
+  border: 1px solid rgba(220,170,210,0.3);
+  border-radius: 20px; padding: 16px; margin-bottom: 16px;
+}
+.settle-title { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 8px; }
+.settle-amount { font-size: 28px; font-weight: 700; }
+.settle-amount.positive { color: var(--mint-d); }
+.settle-amount.negative { color: var(--peach-d); }
+.settle-amount.zero { color: var(--text2); }
+.settle-desc { font-size: 13px; color: var(--text2); margin-top: 6px; line-height: 1.5; }
+
+/* Section title */
+.section-title { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 10px; }
+
+/* Entry list */
+.entry-list { display: flex; flex-direction: column; gap: 8px; }
+.entry-item {
+  background: white; border-radius: 14px; padding: 12px 14px;
+  border: 1px solid var(--border); display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 1px 6px rgba(200,150,200,0.07);
+}
+.entry-cat { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.entry-info { flex: 1; min-width: 0; }
+.entry-name { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entry-meta { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.entry-right { text-align: right; flex-shrink: 0; }
+.entry-amount { font-size: 15px; font-weight: 700; color: var(--text); }
+.entry-payer { font-size: 11px; font-weight: 600; margin-top: 2px; }
+.payer-jun { color: var(--sky-d); }
+.payer-hikari { color: var(--pink-d); }
+.entry-del { background: none; border: none; cursor: pointer; color: #CCC; font-size: 20px; padding: 2px 4px; transition: color 0.15s; line-height: 1; }
+.entry-del:hover { color: var(--peach-d); }
+.empty { text-align: center; padding: 40px 20px; color: var(--text2); font-size: 14px; }
+.empty-icon { font-size: 36px; margin-bottom: 10px; }
+
+/* Add form */
+.add-form {
+  background: white; border-radius: 20px; padding: 18px;
+  border: 1px solid var(--border); margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(200,150,200,0.08);
+}
+.form-row { margin-bottom: 14px; }
+.form-label { font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 7px; display: block; }
+input[type="text"], input[type="number"], input[type="date"], select {
+  width: 100%; padding: 10px 12px;
+  border: 1.5px solid rgba(200,160,200,0.3);
+  border-radius: 12px; font-size: 14px;
+  background: #FDFAFF; color: var(--text);
+  font-family: 'Nunito', sans-serif;
+  outline: none; transition: border-color 0.2s;
+  -webkit-appearance: none;
+}
+input:focus, select:focus { border-color: var(--pink-t); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.payer-toggle { display: flex; gap: 8px; }
+.payer-opt {
+  flex: 1; padding: 10px 8px;
+  border: 1.5px solid rgba(200,160,200,0.3);
+  border-radius: 12px; text-align: center; cursor: pointer;
+  font-size: 14px; font-weight: 600; color: var(--text2);
+  transition: all 0.2s; font-family: 'Nunito', sans-serif;
+}
+.payer-opt.sel-jun { border-color: var(--sky-d); background: var(--sky); color: var(--sky-d); }
+.payer-opt.sel-hikari { border-color: var(--pink-d); background: var(--pink); color: var(--pink-d); }
+.submit-btn {
+  width: 100%; padding: 13px; border-radius: 16px; border: none;
+  background: linear-gradient(135deg, var(--pink-t) 0%, var(--lilac-t) 100%);
+  color: white; font-size: 15px; font-weight: 700; cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  box-shadow: 0 3px 12px rgba(232,120,158,0.3);
+  transition: opacity 0.2s; margin-top: 4px;
+}
+.submit-btn:active { opacity: 0.85; }
+
+/* Stats */
+.cat-bar-list { display: flex; flex-direction: column; gap: 12px; }
+.an-filter-btn {
+  padding: 8px 4px; border-radius: 10px; font-size: 12px; font-weight: 700;
+  border: 1.5px solid rgba(200,160,200,0.3); cursor: pointer; background: #FDFAFF;
+  color: var(--text2); font-family: 'Nunito', sans-serif; text-align: center;
+  transition: all 0.15s; width: 100%;
+}
+.an-filter-btn.on { background: var(--pink); color: var(--pink-d); border-color: var(--pink-t); }
+.cat-row { display: flex; align-items: center; gap: 10px; }
+.cat-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.cat-name { font-size: 12px; font-weight: 600; width: 56px; flex-shrink: 0; color: var(--text); }
+.cat-track { flex: 1; height: 10px; background: #F5EEF8; border-radius: 8px; overflow: hidden; }
+.cat-fill { height: 100%; border-radius: 8px; transition: width 0.5s ease; }
+.cat-val { font-size: 12px; font-weight: 700; min-width: 64px; text-align: right; color: var(--text); }
+
+/* History filter */
+.hist-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.hist-filter-btn {
+  padding: 8px 4px; border-radius: 10px; font-size: 12px; font-weight: 700;
+  border: 1.5px solid rgba(200,160,200,0.3); cursor: pointer; background: #FDFAFF;
+  color: var(--text2); font-family: 'Nunito', sans-serif; text-align: center;
+  transition: all 0.15s; width: 100%;
+}
+.hist-filter-btn.on { background: var(--pink); color: var(--pink-d); border-color: var(--pink-t); }
+.filter-btn {
+  padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  cursor: pointer; background: white; color: var(--text2);
+  border: 1px solid var(--border); transition: all 0.2s;
+  font-family: 'Nunito', sans-serif;
+}
+.filter-btn.active { background: var(--pink); color: var(--pink-d); border-color: var(--pink-t); }
+
+/* Loading */
+.loading-screen {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 100; gap: 12px;
+}
+.loading-screen p { color: var(--text2); font-size: 14px; }
+
+/* Error banner */
+.error-banner {
+  position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+  background: #ff6b6b; color: white; padding: 10px 20px;
+  border-radius: 0 0 16px 16px; font-size: 13px; font-weight: 600;
+  z-index: 300; text-align: center; max-width: 480px; width: 100%;
+  display: none;
+}
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: white; padding: 10px 22px;
+  border-radius: 30px; font-size: 13px; font-weight: 600;
+  opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 200;
+  white-space: nowrap; box-shadow: 0 4px 16px rgba(60,40,60,0.2);
+}
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="error-banner" id="error-banner"></div>
+
+<div class="loading-screen" id="loading">
+  <div style="font-size:40px">🌸</div>
+  <p>読み込み中...</p>
+</div>
+
+<div class="app" id="main-app" style="display:none">
+  <div class="header">
+    <div>
+      <div class="header-title">家計簿</div>
+      <div class="header-sub" id="greeting">ユーザーを選んでください</div>
+    </div>
+    <div>
+      <div class="avatars">
+        <div class="avatar av-jun" id="av-jun" onclick="setUser('じゅん')">じゅ</div>
+        <div class="avatar av-hikari" id="av-hikari" onclick="setUser('ひかり')">ひか</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('home')">🏠 ホーム</div>
+    <div class="tab" onclick="showTab('add')">✏️ 追加</div>
+    <div class="tab" onclick="showTab('analytics')">📊 統計・履歴</div>
+    <div class="tab" onclick="showTab('memo')">🛒 リスト</div>
+  </div>
+
+  <!-- ホーム -->
+  <div class="screen active" id="screen-home">
+    <div class="month-nav">
+      <button class="nav-btn" onclick="changeMonth(-1)">◀</button>
+      <span class="month-label" id="month-label"></span>
+      <button class="nav-btn" onclick="changeMonth(1)">▶</button>
+    </div>
+    <div class="summary-grid">
+      <div class="stat-card">
+        <div class="stat-label">合計支出</div>
+        <div class="stat-value" id="total-amt">¥0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">件数</div>
+        <div class="stat-value" id="total-cnt">0件</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label"><span class="stat-dot" style="background:var(--sky-d)"></span>じゅん</div>
+        <div class="stat-value" id="jun-paid">¥0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label"><span class="stat-dot" style="background:var(--pink-d)"></span>ひかり</div>
+        <div class="stat-value" id="hikari-paid">¥0</div>
+      </div>
+    </div>
+    <div class="settle-card">
+      <div class="settle-title">💰 今月の精算</div>
+      <div class="settle-amount zero" id="settle-amount">¥0</div>
+      <div class="settle-desc" id="settle-desc">今月の支出を入力してください</div>
+    </div>
+    <div class="section-title">最近の支出</div>
+    <div class="entry-list" id="recent-list"></div>
+  </div>
+
+  <!-- 追加 -->
+  <div class="screen" id="screen-add">
+    <div class="section-title">支出を追加 ✍️</div>
+    <div class="add-form">
+      <div class="form-row">
+        <label class="form-label">支払った人</label>
+        <div class="payer-toggle">
+          <div class="payer-opt" id="popt-jun" onclick="selectPayer('じゅん')">じゅん</div>
+          <div class="payer-opt" id="popt-hikari" onclick="selectPayer('ひかり')">ひかり</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">内容</label>
+        <input type="text" id="inp-name" placeholder="例：スーパーで食材" />
+      </div>
+      <div class="form-grid">
+        <div>
+          <label class="form-label">金額（円）</label>
+          <input type="number" id="inp-amount" placeholder="0" min="0" />
+        </div>
+        <div>
+          <label class="form-label">日付</label>
+          <input type="date" id="inp-date" />
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">カテゴリ</label>
+        <select id="inp-cat">
+          <option value="食費">🛒 食費</option>
+          <option value="外食">🍜 外食</option>
+          <option value="日用品">🧴 日用品</option>
+          <option value="家賃">🏠 家賃</option>
+          <option value="光熱費">💡 光熱費</option>
+          <option value="交通費">🚃 交通費</option>
+          <option value="娯楽">🎉 娯楽</option>
+          <option value="カフェ">☕ カフェ</option>
+          <option value="旅行">✈️ 旅行</option>
+          <option value="医療">💊 医療</option>
+          <option value="その他">📦 その他</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">支払い方法</label>
+        <select id="inp-pay">
+          <option value="現金">💴 現金</option>
+          <option value="クレジット">💳 クレジット</option>
+          <option value="d払い">📱 d払い</option>
+          <option value="PayPay">📱 PayPay</option>
+          <option value="その他">💰 その他</option>
+        </select>
+        <label class="form-label">購入場所</label>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <div id="place-shop" onclick="selectPlace('店舗')" style="flex:1;padding:10px 8px;border:1.5px solid rgba(200,160,200,0.3);border-radius:12px;text-align:center;cursor:pointer;font-size:14px;font-weight:600;color:var(--text2);background:var(--sky);border-color:var(--sky-d);color:var(--sky-d);">🏪 店舗</div>
+          <div id="place-net" onclick="selectPlace('ネット')" style="flex:1;padding:10px 8px;border:1.5px solid rgba(200,160,200,0.3);border-radius:12px;text-align:center;cursor:pointer;font-size:14px;font-weight:600;color:var(--text2);">🌐 ネット</div>
+        </div>
+        <label class="form-label">メモ（任意）</label>
+        <input type="text" id="inp-note" placeholder="補足があれば..." />
+      </div>
+      <button class="submit-btn" onclick="addEntry()">追加する 🌟</button>
+    </div>
+  </div>
+
+  <!-- 統計・履歴（統合） -->
+  <div class="screen" id="screen-analytics">
+    <div class="month-nav">
+      <button class="nav-btn" onclick="changeMonth(-1)">◀</button>
+      <span class="month-label" id="month-label2"></span>
+      <button class="nav-btn" onclick="changeMonth(1)">▶</button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
+      <div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;">
+        <button onclick="toggleAccordion('acc-cat')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:none;border:none;cursor:pointer;font-family:'Nunito',sans-serif;">
+          <span style="font-size:13px;font-weight:700;color:var(--text);">🗂️ カテゴリ</span>
+          <span style="display:flex;align-items:center;gap:8px;">
+            <span id="acc-cat-val" style="font-size:12px;font-weight:700;color:var(--pink-d);background:var(--pink);padding:2px 10px;border-radius:20px;">すべて</span>
+            <span id="acc-cat-arrow" style="font-size:12px;color:var(--text2);">▼</span>
+          </span>
+        </button>
+        <div id="acc-cat" style="display:none;padding:0 12px 12px;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">
+            <button class="an-filter-btn on" data-type="cat" data-val="all" onclick="setAnFilter('cat','all')">すべて</button>
+            <button class="an-filter-btn" data-type="cat" data-val="食費" onclick="setAnFilter('cat','食費')">🛒 食費</button>
+            <button class="an-filter-btn" data-type="cat" data-val="外食" onclick="setAnFilter('cat','外食')">🍜 外食</button>
+            <button class="an-filter-btn" data-type="cat" data-val="日用品" onclick="setAnFilter('cat','日用品')">🧴 日用品</button>
+            <button class="an-filter-btn" data-type="cat" data-val="家賃" onclick="setAnFilter('cat','家賃')">🏠 家賃</button>
+            <button class="an-filter-btn" data-type="cat" data-val="光熱費" onclick="setAnFilter('cat','光熱費')">💡 光熱費</button>
+            <button class="an-filter-btn" data-type="cat" data-val="交通費" onclick="setAnFilter('cat','交通費')">🚃 交通費</button>
+            <button class="an-filter-btn" data-type="cat" data-val="娯楽" onclick="setAnFilter('cat','娯楽')">🎉 娯楽</button>
+            <button class="an-filter-btn" data-type="cat" data-val="カフェ" onclick="setAnFilter('cat','カフェ')">☕ カフェ</button>
+            <button class="an-filter-btn" data-type="cat" data-val="旅行" onclick="setAnFilter('cat','旅行')">✈️ 旅行</button>
+            <button class="an-filter-btn" data-type="cat" data-val="医療" onclick="setAnFilter('cat','医療')">💊 医療</button>
+            <button class="an-filter-btn" data-type="cat" data-val="その他" onclick="setAnFilter('cat','その他')">📦 その他</button>
+          </div>
+        </div>
+      </div>
+      <div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;">
+        <button onclick="toggleAccordion('acc-pay')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:none;border:none;cursor:pointer;font-family:'Nunito',sans-serif;">
+          <span style="font-size:13px;font-weight:700;color:var(--text);">💳 支払い方法</span>
+          <span style="display:flex;align-items:center;gap:8px;">
+            <span id="acc-pay-val" style="font-size:12px;font-weight:700;color:var(--pink-d);background:var(--pink);padding:2px 10px;border-radius:20px;">すべて</span>
+            <span id="acc-pay-arrow" style="font-size:12px;color:var(--text2);">▼</span>
+          </span>
+        </button>
+        <div id="acc-pay" style="display:none;padding:0 12px 12px;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">
+            <button class="an-filter-btn on" data-type="pay" data-val="all" onclick="setAnFilter('pay','all')">すべて</button>
+            <button class="an-filter-btn" data-type="pay" data-val="現金" onclick="setAnFilter('pay','現金')">💴 現金</button>
+            <button class="an-filter-btn" data-type="pay" data-val="クレジット" onclick="setAnFilter('pay','クレジット')">💳 カード</button>
+            <button class="an-filter-btn" data-type="pay" data-val="d払い" onclick="setAnFilter('pay','d払い')">📱 d払い</button>
+            <button class="an-filter-btn" data-type="pay" data-val="PayPay" onclick="setAnFilter('pay','PayPay')">📱 PayPay</button>
+            <button class="an-filter-btn" data-type="pay" data-val="その他" onclick="setAnFilter('pay','その他')">💰 その他</button>
+          </div>
+        </div>
+      </div>
+      <div style="background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;">
+        <button onclick="toggleAccordion('acc-place')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:none;border:none;cursor:pointer;font-family:'Nunito',sans-serif;">
+          <span style="font-size:13px;font-weight:700;color:var(--text);">🏪 購入場所</span>
+          <span style="display:flex;align-items:center;gap:8px;">
+            <span id="acc-place-val" style="font-size:12px;font-weight:700;color:var(--pink-d);background:var(--pink);padding:2px 10px;border-radius:20px;">すべて</span>
+            <span id="acc-place-arrow" style="font-size:12px;color:var(--text2);">▼</span>
+          </span>
+        </button>
+        <div id="acc-place" style="display:none;padding:0 12px 12px;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">
+            <button class="an-filter-btn on" data-type="place" data-val="all" onclick="setAnFilter('place','all')">すべて</button>
+            <button class="an-filter-btn" data-type="place" data-val="店舗" onclick="setAnFilter('place','店舗')">🏪 店舗</button>
+            <button class="an-filter-btn" data-type="place" data-val="ネット" onclick="setAnFilter('place','ネット')">🌐 ネット</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+      <div style="background:#fff;border-radius:14px;padding:12px;border:1px solid var(--border);">
+        <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;">絞り込み後の合計</div>
+        <div style="font-size:20px;font-weight:700;color:var(--text);" id="an-total">¥0</div>
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:12px;border:1px solid var(--border);">
+        <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px;">件数</div>
+        <div style="font-size:20px;font-weight:700;color:var(--text);" id="an-count">0件</div>
+      </div>
+    </div>
+
+    <div class="section-title">📊 カテゴリ別支出</div>
+    <div class="cat-bar-list" id="cat-bars" style="margin-bottom:20px;"></div>
+
+    <div class="section-title">📋 支出一覧</div>
+    <div class="entry-list" id="analytics-list"></div>
+  </div>
+
+  <!-- 買い物リスト -->
+  <div class="screen" id="screen-memo">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="font-size:15px;font-weight:700;color:var(--text);">🛒 買い物リスト</div>
+      <button onclick="clearChecked()" style="font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:#fff;color:var(--text2);cursor:pointer;font-family:'Nunito',sans-serif;">✅ 購入済みを削除</button>
+    </div>
+
+    <div style="background:#fff;border-radius:16px;padding:14px;border:1px solid var(--border);box-shadow:0 2px 10px rgba(200,150,200,0.08);margin-bottom:14px;">
+      <div style="margin-bottom:8px;">
+        <input type="text" id="memo-name" placeholder="品名（例：牛乳）" style="width:100%;padding:11px 14px;border:1.5px solid rgba(200,160,200,0.3);border-radius:12px;font-size:16px;font-family:'Nunito',sans-serif;outline:none;background:#FDFAFF;">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <select id="memo-cat" style="flex:1;padding:10px 12px;border:1.5px solid rgba(200,160,200,0.3);border-radius:12px;font-size:14px;font-family:'Nunito',sans-serif;background:#FDFAFF;outline:none;">
+          <option value="食品">🥦 食品</option>
+          <option value="飲み物">🥤 飲み物</option>
+          <option value="日用品">🧴 日用品</option>
+          <option value="冷凍食品">🧊 冷凍</option>
+          <option value="お菓子">🍬 お菓子</option>
+          <option value="その他">📦 その他</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" id="memo-note" placeholder="メモ（例：2個、特売品など）" style="flex:1;padding:10px 14px;border:1.5px solid rgba(200,160,200,0.3);border-radius:12px;font-size:14px;font-family:'Nunito',sans-serif;outline:none;background:#FDFAFF;">
+        <button onclick="addMemoItem()" style="padding:10px 20px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--pink-t),var(--lilac-t));color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;white-space:nowrap;">追加</button>
+      </div>
+    </div>
+
+    <div id="memo-progress-wrap" style="display:none;background:#fff;border-radius:14px;padding:12px 14px;border:1px solid var(--border);margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">
+        <span>🛒 買い物進捗</span>
+        <span id="memo-progress-label">0 / 0 件</span>
+      </div>
+      <div style="height:8px;background:#F5EEF8;border-radius:8px;overflow:hidden;">
+        <div id="memo-progress-bar" style="height:100%;background:linear-gradient(90deg,var(--pink-t),var(--lilac-t));border-radius:8px;transition:width 0.4s;width:0%;"></div>
+      </div>
+    </div>
+
+    <div id="memo-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== Supabase初期化 =====
+const { createClient } = supabase;
+const db = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+// ===== アプリ状態 =====
+const CAT_META = {
+  '食費':   { icon: '🛒', bg: '#C8F0E4', fill: '#8ED5BF' },
+  '外食':   { icon: '🍜', bg: '#FFE4CC', fill: '#F5AD7A' },
+  '日用品': { icon: '🧴', bg: '#C8E8FF', fill: '#8EC4EF' },
+  '家賃':   { icon: '🏠', bg: '#E8D8FF', fill: '#B899E8' },
+  '光熱費': { icon: '💡', bg: '#FFF3C4', fill: '#F5D06A' },
+  '交通費': { icon: '🚃', bg: '#D8EEFF', fill: '#7AB8F0' },
+  '娯楽':   { icon: '🎉', bg: '#FFD6E7', fill: '#F9A8C9' },
+  'カフェ': { icon: '☕', bg: '#FFE4CC', fill: '#F5AD7A' },
+  '旅行':   { icon: '✈️', bg: '#C8E8FF', fill: '#7AB8F0' },
+  '医療':   { icon: '💊', bg: '#FFD6E7', fill: '#F9A8C9' },
+  'その他': { icon: '📦', bg: '#F0EAF8', fill: '#C0A8D8' },
+};
+
+let entries = [];
+let memos = [];
+let currentUser = null;
+let currentMonth = new Date();
+let selectedPayer = null;
+let selectedPlace = '店舗';
+
+// ===== エラー表示 =====
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+// ===== Supabase: 支出データ =====
+async function loadEntries() {
+  const { data, error } = await db.from('entries').select('*').order('date', { ascending: false });
+  if (error) { showError('データ読み込みエラー: ' + error.message); return; }
+  entries = (data || []).map(rowToEntry);
+  render();
+}
+
+async function saveEntry(entry) {
+  const { error } = await db.from('entries').upsert(entryToRow(entry));
+  if (error) showError('保存エラー: ' + error.message);
+}
+
+async function removeEntryFromDb(id) {
+  const { error } = await db.from('entries').delete().eq('entry_id', String(id));
+  if (error) showError('削除エラー: ' + error.message);
+}
+
+function entryToRow(e) {
+  return {
+    entry_id: String(e.id),
+    name: e.name,
+    amount: e.amount,
+    date: e.date,
+    cat: e.cat,
+    note: e.note || '',
+    pay: e.pay || '',
+    place: e.place || '店舗',
+    payer: e.payer,
+  };
+}
+
+function rowToEntry(row) {
+  return {
+    id: Number(row.entry_id),
+    name: row.name,
+    amount: Number(row.amount),
+    date: row.date,
+    cat: row.cat,
+    note: row.note || '',
+    pay: row.pay || '',
+    place: row.place || '店舗',
+    payer: row.payer,
+  };
+}
+
+// ===== Supabase: 買い物リスト =====
+async function loadMemos() {
+  const { data, error } = await db.from('memos').select('*').order('created_at', { ascending: true });
+  if (error) { showError('メモ読み込みエラー: ' + error.message); return; }
+  memos = (data || []).map(rowToMemo);
+  renderMemos();
+}
+
+async function saveMemoItem(m) {
+  const { error } = await db.from('memos').upsert(memoToRow(m));
+  if (error) showError('メモ保存エラー: ' + error.message);
+}
+
+async function removeMemoFromDb(id) {
+  const { error } = await db.from('memos').delete().eq('memo_id', String(id));
+  if (error) showError('メモ削除エラー: ' + error.message);
+}
+
+async function clearCheckedFromDb() {
+  const ids = memos.filter(m => m.done).map(m => String(m.id));
+  if (!ids.length) return;
+  const { error } = await db.from('memos').delete().in('memo_id', ids);
+  if (error) showError('削除エラー: ' + error.message);
+}
+
+function memoToRow(m) {
+  return { memo_id: String(m.id), name: m.name, cat: m.cat, note: m.note || '', done: m.done };
+}
+
+function rowToMemo(row) {
+  return { id: Number(row.memo_id), name: row.name, cat: row.cat, note: row.note || '', done: row.done };
+}
+
+// ===== リアルタイム購読 =====
+function subscribeRealtime() {
+  db.channel('kakeibo-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'entries' }, loadEntries)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'memos' }, loadMemos)
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') console.log('リアルタイム接続済み');
+    });
+}
+
+// ===== UI関数 =====
+function fmt(n) { return '¥' + Math.round(n).toLocaleString('ja-JP'); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function selectPlace(p) {
+  selectedPlace = p;
+  document.getElementById('place-shop').style.cssText = p === '店舗'
+    ? 'flex:1;padding:10px 8px;border:1.5px solid var(--sky-d);border-radius:12px;text-align:center;cursor:pointer;font-size:14px;font-weight:600;background:var(--sky);color:var(--sky-d);'
+    : 'flex:1;padding:10px 8px;border:1.5px solid rgba(200,160,200,0.3);border-radius:12px;text-align:center;cursor:pointer;font-size:14px;font-weight:600;color:var(--text2);';
+  document.getElementById('place-net').style.cssText = p === 'ネット'
+    ? 'flex:1;padding:10px 8px;border:1.5px solid #8A5CD1;border-radius:12px;text-align:center;cursor:pointer;font-size:14px;font-weight:600;background:#E8D8FF;color:#8A5CD1;'
+    : 'flex:1;padding:10px 8px;border:1.5px solid rgba(200,160,200,0.3);border-radius:12px;text-align:center;cursor:pointer;font-size:14px;font-weight:600;color:var(--text2);';
+}
+
+function setUser(u) {
+  currentUser = u;
+  document.getElementById('av-jun').classList.toggle('active', u === 'じゅん');
+  document.getElementById('av-hikari').classList.toggle('active', u === 'ひかり');
+  document.getElementById('greeting').textContent = u === 'じゅん' ? 'こんにちは、じゅんさん' : 'こんにちは、ひかりさん';
+  selectPayer(u);
+  render();
+}
+
+function showTab(t) {
+  const tabs = ['home', 'add', 'analytics', 'memo'];
+  document.querySelectorAll('.tab').forEach((el, i) => el.classList.toggle('active', tabs[i] === t));
+  document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+  document.getElementById('screen-' + t).classList.add('active');
+  if (t === 'add' && !selectedPayer) selectPayer(currentUser || 'じゅん');
+  if (t === 'analytics') renderAnalytics(getMonthEntries());
+}
+
+function changeMonth(d) {
+  currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + d, 1);
+  render();
+}
+
+function selectPayer(p) {
+  selectedPayer = p;
+  document.getElementById('popt-jun').className = 'payer-opt' + (p === 'じゅん' ? ' sel-jun' : '');
+  document.getElementById('popt-hikari').className = 'payer-opt' + (p === 'ひかり' ? ' sel-hikari' : '');
+}
+
+async function addEntry() {
+  const name = document.getElementById('inp-name').value.trim();
+  const amount = parseFloat(document.getElementById('inp-amount').value);
+  const date = document.getElementById('inp-date').value;
+  const cat = document.getElementById('inp-cat').value;
+  const note = document.getElementById('inp-note').value.trim();
+  if (!name) { showToast('⚠️ 内容を入力してください'); return; }
+  if (!amount || amount <= 0) { showToast('⚠️ 金額を入力してください'); return; }
+  if (!date) { showToast('⚠️ 日付を入力してください'); return; }
+  if (!selectedPayer) { showToast('⚠️ 支払った人を選んでください'); return; }
+  const pay = document.getElementById('inp-pay').value;
+  const entry = { id: Date.now(), name, amount, date, cat, note, pay, place: selectedPlace, payer: selectedPayer };
+  await saveEntry(entry);
+  document.getElementById('inp-name').value = '';
+  document.getElementById('inp-amount').value = '';
+  document.getElementById('inp-note').value = '';
+  selectedPlace = '店舗';
+  selectPlace('店舗');
+  const d = new Date(date + 'T00:00:00');
+  currentMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+  showToast('✨ 追加しました！');
+  showTab('home');
+}
+
+async function deleteEntry(id) {
+  if (!confirm('この支出を削除しますか？')) return;
+  entries = entries.filter(e => e.id !== id);
+  render();
+  await removeEntryFromDb(id);
+  showToast('🗑️ 削除しました');
+}
+
+function getMonthEntries() {
+  const y = currentMonth.getFullYear(), m = currentMonth.getMonth();
+  return entries.filter(e => {
+    const d = new Date(e.date + 'T00:00:00');
+    return d.getFullYear() === y && d.getMonth() === m;
+  });
+}
+
+function renderEntry(e) {
+  const cm = CAT_META[e.cat] || CAT_META['その他'];
+  const payIcon = { '現金':'💴','クレジット':'💳','d払い':'📱','PayPay':'📱','その他':'💰' }[e.pay] || '';
+  const payStr = e.pay ? ` · ${payIcon}${e.pay}` : '';
+  const placeStr = e.place === 'ネット' ? ' · 🌐ネット' : '';
+  return `<div class="entry-item">
+    <div class="entry-cat" style="background:${cm.bg}">${cm.icon}</div>
+    <div class="entry-info">
+      <div class="entry-name">${e.name}</div>
+      <div class="entry-meta">${e.date} · ${e.cat}${payStr}${placeStr}${e.note ? ' · ' + e.note : ''}</div>
+    </div>
+    <div class="entry-right">
+      <div class="entry-amount">${fmt(e.amount)}</div>
+      <div class="entry-payer ${e.payer === 'じゅん' ? 'payer-jun' : 'payer-hikari'}">${e.payer}</div>
+    </div>
+    <button class="entry-del" onclick="deleteEntry(${e.id})">×</button>
+  </div>`;
+}
+
+function render() {
+  const y = currentMonth.getFullYear(), m = currentMonth.getMonth() + 1;
+  const ml = y + '年' + m + '月';
+  ['month-label', 'month-label2'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = ml;
+  });
+  const me = getMonthEntries();
+  const total = me.reduce((s, e) => s + e.amount, 0);
+  const junPaid = me.filter(e => e.payer === 'じゅん').reduce((s, e) => s + e.amount, 0);
+  const hikariPaid = total - junPaid;
+  const diff = junPaid - total / 2;
+  document.getElementById('total-amt').textContent = fmt(total);
+  document.getElementById('total-cnt').textContent = me.length + '件';
+  document.getElementById('jun-paid').textContent = fmt(junPaid);
+  document.getElementById('hikari-paid').textContent = fmt(hikariPaid);
+  const sa = document.getElementById('settle-amount');
+  const sd = document.getElementById('settle-desc');
+  if (total === 0) {
+    sa.textContent = '¥0'; sa.className = 'settle-amount zero'; sd.textContent = '今月の支出を入力してください';
+  } else if (Math.abs(diff) < 1) {
+    sa.textContent = '¥0 🎉'; sa.className = 'settle-amount positive'; sd.textContent = 'ふたりの負担は均等です！精算不要 ✨';
+  } else if (diff > 0) {
+    sa.textContent = fmt(diff); sa.className = 'settle-amount positive'; sd.textContent = 'ひかりがじゅんに ' + fmt(diff) + ' を支払う';
+  } else {
+    sa.textContent = fmt(-diff); sa.className = 'settle-amount negative'; sd.textContent = 'じゅんがひかりに ' + fmt(-diff) + ' を支払う';
+  }
+  const recent = [...me].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+  document.getElementById('recent-list').innerHTML = recent.length
+    ? recent.map(renderEntry).join('')
+    : '<div class="empty"><div class="empty-icon">🌱</div>まだ支出がありません<br>追加してみましょう！</div>';
+  renderAnalytics(me);
+}
+
+// ===== 統計 =====
+let anFilterCat = 'all';
+let anFilterPay = 'all';
+let anFilterPlace = 'all';
+
+function toggleAccordion(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById(id + '-arrow');
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (arrow) arrow.textContent = isOpen ? '▼' : '▲';
+}
+
+const AN_LABELS = {
+  cat:   { all:'すべて', 食費:'🛒 食費', 外食:'🍜 外食', 日用品:'🧴 日用品', 家賃:'🏠 家賃', 光熱費:'💡 光熱費', 交通費:'🚃 交通費', 娯楽:'🎉 娯楽', カフェ:'☕ カフェ', 旅行:'✈️ 旅行', 医療:'💊 医療', その他:'📦 その他' },
+  pay:   { all:'すべて', 現金:'💴 現金', クレジット:'💳 カード', 'd払い':'📱 d払い', PayPay:'📱 PayPay', その他:'💰 その他' },
+  place: { all:'すべて', 店舗:'🏪 店舗', ネット:'🌐 ネット' },
+};
+
+function setAnFilter(type, val) {
+  if (type === 'cat')   anFilterCat   = val;
+  if (type === 'pay')   anFilterPay   = val;
+  if (type === 'place') anFilterPlace = val;
+  document.querySelectorAll(`.an-filter-btn[data-type="${type}"]`).forEach(b =>
+    b.classList.toggle('on', b.dataset.val === val));
+  const labelEl = document.getElementById('acc-' + type + '-val');
+  if (labelEl) {
+    labelEl.textContent = AN_LABELS[type][val] || val;
+    labelEl.style.background = val === 'all' ? 'var(--pink)' : 'var(--pink-d)';
+    labelEl.style.color = val === 'all' ? 'var(--pink-d)' : '#fff';
+  }
+  renderAnalytics(getMonthEntries());
+}
+
+function renderAnalytics(me) {
+  let filtered = me;
+  if (anFilterCat   !== 'all') filtered = filtered.filter(e => e.cat   === anFilterCat);
+  if (anFilterPay   !== 'all') filtered = filtered.filter(e => e.pay   === anFilterPay);
+  if (anFilterPlace !== 'all') filtered = filtered.filter(e => e.place === anFilterPlace);
+  const total = filtered.reduce((s, e) => s + e.amount, 0);
+  const tEl = document.getElementById('an-total');
+  const cEl = document.getElementById('an-count');
+  if (tEl) tEl.textContent = fmt(total);
+  if (cEl) cEl.textContent = filtered.length + '件';
+  const byCat = {};
+  filtered.forEach(e => { byCat[e.cat] = (byCat[e.cat] || 0) + e.amount; });
+  const sorted = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+  const max = sorted.length ? sorted[0][1] : 1;
+  const cb = document.getElementById('cat-bars');
+  if (cb) {
+    cb.innerHTML = sorted.length ? sorted.map(([cat, amt]) => {
+      const cm = CAT_META[cat] || CAT_META['その他'];
+      return `<div class="cat-row">
+        <div class="cat-icon" style="background:${cm.bg}">${cm.icon}</div>
+        <div class="cat-name">${cat}</div>
+        <div class="cat-track"><div class="cat-fill" style="width:${Math.round(amt/max*100)}%;background:${cm.fill}"></div></div>
+        <div class="cat-val">${fmt(amt)}</div>
+      </div>`;
+    }).join('') : '<div class="empty"><div class="empty-icon">📊</div>データがありません</div>';
+  }
+  const listEl = document.getElementById('analytics-list');
+  if (listEl) {
+    const listSorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date));
+    listEl.innerHTML = listSorted.length
+      ? listSorted.map(renderEntry).join('')
+      : '<div class="empty"><div class="empty-icon">🔍</div>該当する支出はありません</div>';
+  }
+}
+
+// ===== 買い物リスト =====
+const MEMO_CAT_ICON = { '食品':'🥦','飲み物':'🥤','日用品':'🧴','冷凍食品':'🧊','お菓子':'🍬','その他':'📦' };
+const MEMO_CAT_BG   = { '食品':'#C8F0E4','飲み物':'#C8E8FF','日用品':'#FFD6E7','冷凍食品':'#E8D8FF','お菓子':'#FFF3C4','その他':'#F0EAF8' };
+
+async function addMemoItem() {
+  const name = document.getElementById('memo-name').value.trim();
+  const cat  = document.getElementById('memo-cat').value;
+  const note = document.getElementById('memo-note').value.trim();
+  if (!name) { showToast('品名を入力してください'); return; }
+  const m = { id: Date.now(), name, cat, note, done: false };
+  memos.push(m);
+  renderMemos();
+  await saveMemoItem(m);
+  document.getElementById('memo-name').value = '';
+  document.getElementById('memo-note').value = '';
+  showToast('🛒 追加しました！');
+}
+
+async function toggleMemo(id) {
+  const m = memos.find(m => m.id === id);
+  if (!m) return;
+  m.done = !m.done;
+  renderMemos();
+  await saveMemoItem(m);
+}
+
+async function deleteMemo(id) {
+  memos = memos.filter(m => m.id !== id);
+  renderMemos();
+  await removeMemoFromDb(id);
+}
+
+async function clearChecked() {
+  const before = memos.length;
+  await clearCheckedFromDb();
+  memos = memos.filter(m => !m.done);
+  renderMemos();
+  const removed = before - memos.length;
+  showToast(removed > 0 ? `✅ ${removed}件を削除しました` : '購入済みアイテムはありません');
+}
+
+function renderMemos() {
+  const list = document.getElementById('memo-list');
+  const total = memos.length;
+  const done  = memos.filter(m => m.done).length;
+  const pw = document.getElementById('memo-progress-wrap');
+  if (total > 0) {
+    pw.style.display = 'block';
+    document.getElementById('memo-progress-label').textContent = done + ' / ' + total + ' 件';
+    document.getElementById('memo-progress-bar').style.width = Math.round(done / total * 100) + '%';
+  } else {
+    pw.style.display = 'none';
+  }
+  if (!memos.length) {
+    list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text2);font-size:14px;"><div style="font-size:36px;margin-bottom:10px;">🛒</div>リストは空です<br>上から品物を追加してください</div>';
+    return;
+  }
+  const undone = memos.filter(m => !m.done);
+  const doneItems = memos.filter(m => m.done);
+  let html = '';
+  if (undone.length) {
+    html += `<div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">未購入 ${undone.length}件</div>`;
+    undone.forEach(m => { html += memoItemHtml(m); });
+  }
+  if (doneItems.length) {
+    html += `<div style="font-size:12px;font-weight:700;color:var(--text2);margin:14px 0 8px;">✅ 購入済み ${doneItems.length}件</div>`;
+    doneItems.forEach(m => { html += memoItemHtml(m); });
+  }
+  list.innerHTML = html;
+}
+
+function memoItemHtml(m) {
+  const bg   = MEMO_CAT_BG[m.cat]   || '#F0EAF8';
+  const icon = MEMO_CAT_ICON[m.cat] || '📦';
+  const doneStyle = m.done ? 'opacity:0.5;text-decoration:line-through;' : '';
+  return `
+    <div style="background:#fff;border-radius:14px;padding:12px 14px;border:1px solid var(--border);display:flex;align-items:center;gap:10px;margin-bottom:8px;box-shadow:0 1px 6px rgba(200,150,200,0.07);">
+      <div onclick="toggleMemo(${m.id})" style="width:24px;height:24px;border-radius:50%;border:2px solid ${m.done?'var(--pink-d)':'rgba(200,160,200,0.5)'};background:${m.done?'var(--pink)':'#fff'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:13px;">
+        ${m.done ? '✓' : ''}
+      </div>
+      <div style="width:34px;height:34px;border-radius:10px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">${icon}</div>
+      <div style="flex:1;min-width:0;${doneStyle}">
+        <div style="font-size:14px;font-weight:600;color:var(--text);">${m.name}</div>
+        ${m.note ? `<div style="font-size:11px;color:var(--text2);margin-top:2px;">${m.note}</div>` : ''}
+        <div style="font-size:11px;color:var(--text2);margin-top:1px;">${m.cat}</div>
+      </div>
+      <button onclick="deleteMemo(${m.id})" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:18px;padding:2px 4px;">×</button>
+    </div>`;
+}
+
+// ===== 起動 =====
+document.getElementById('inp-date').value = new Date().toISOString().slice(0, 10);
+
+async function initApp() {
+  try {
+    subscribeRealtime();
+    await Promise.all([loadEntries(), loadMemos()]);
+  } catch(e) {
+    showError('接続エラー: ' + e.message);
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+  }
+}
+
+initApp();
+</script>
+</body>
+</html>
